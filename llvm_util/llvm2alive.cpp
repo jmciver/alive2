@@ -668,8 +668,9 @@ public:
     if (!i.isSimple())
       return error(i);
     PARSE_UNOP();
-    return
-      make_unique<Load>(*ty, value_name(i), *val, alignment(i, i.getType()));
+    return make_unique<Load>(*ty, value_name(i), *val,
+                             alignment(i, i.getType()),
+                             i.hasMetadata(LLVMContext::MD_freeze_bits));
   }
 
   RetTy visitStoreInst(llvm::StoreInst &i) {

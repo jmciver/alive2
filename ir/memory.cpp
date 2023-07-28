@@ -577,7 +577,7 @@ static vector<Byte> valueToBytes(const StateValue &val, const Type &fromType,
 }
 
 static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
-                               const Type &toType) {
+                               const Type &toType, bool isFreezing, State *s) {
   assert(!bytes.empty());
 
   auto ub_pre = [&](expr &&e) -> expr {
@@ -634,8 +634,13 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     } else {
       loaded_ptr = expr::mkIf(is_ptr, loaded_ptr, Pointer::mkNullPointer(m)());
     }
-    return { std::move(loaded_ptr), std::move(non_poison) };
 
+    if (isFreezing) {
+      expr nondet = s->getFreshNondetVar("nondet", loaded_ptr);
+      return {expr::mkIf(non_poison, loaded_ptr, nondet), true};
+    } else {
+      return {std::move(loaded_ptr), std::move(non_poison)};
+    }
   } else {
     assert(!toType.isAggregateType() || isNonPtrVector(toType));
     auto bitsize = toType.bits();
@@ -644,21 +649,22 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     StateValue val;
     bool first = true;
     IntType ibyteTy("", bits_byte);
-    unsigned byte_number = 0;
 
-    for (auto &b: bytes) {
-      expr expr_np = ub_pre(!b.isPtr());
-
-      if (num_sub_byte_bits) {
-        unsigned bits = (bitsize % 8) == 0 ? 0 : bitsize;
-        expr_np &= b.numStoredBits() == bits;
-        expr_np &= b.byteNumber() == byte_number++;
+    for (auto &b : bytes) {
+      StateValue v;
+      expr preByteNonPoison =
+          ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison());
+      if (isFreezing) {
+        expr nondet = s->getFreshNondetVar("nondet", b.nonptrValue());
+        v = {expr::mkIf(preByteNonPoison == expr::mkInt(-1, preByteNonPoison),
+                        b.nonptrValue(), nondet),
+             expr::mkInt(-1, b.nonptrNonpoison())};
+      } else {
+        expr isptr = ub_pre(!b.isPtr());
+        v = {is_asm ? b.forceCastToInt() : b.nonptrValue(),
+             is_asm ? b.nonPoison()
+                    : ibyteTy.combine_poison(isptr, b.nonptrNonpoison())};
       }
-      if (is_asm)
-        expr_np = true;
-
-      StateValue v(is_asm ? b.forceCastToInt() : b.nonptrValue(),
-                   ibyteTy.combine_poison(expr_np, b.nonptrNonpoison()));
       val = first ? std::move(v) : v.concat(val);
       first = false;
     }
@@ -2041,7 +2047,7 @@ void Memory::store(const expr &p, const StateValue &v, const Type &type,
 }
 
 StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
-                        uint64_t align) {
+                        uint64_t align, bool isFreezing) {
   unsigned bytecount = getStoreByteSize(type);
 
   auto aty = type.getAsAggregateType();
@@ -2057,7 +2063,8 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
 
       auto ptr_i = ptr + byteofs;
       auto align_i = gcd(align, byteofs % align);
-      member_vals.emplace_back(load(ptr_i, aty->getChild(i), undef, align_i));
+      member_vals.emplace_back(
+          load(ptr_i, aty->getChild(i), undef, align_i, isFreezing));
       byteofs += getStoreByteSize(aty->getChild(i));
     }
     assert(byteofs == bytecount);
@@ -2067,7 +2074,7 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
   bool is_ptr = type.isPtrType();
   auto loadedBytes = load(ptr, bytecount, undef, align, little_endian,
                           is_ptr ? DATA_PTR : DATA_INT);
-  auto val = bytesToValue(*this, loadedBytes, type);
+  auto val = bytesToValue(*this, loadedBytes, type, isFreezing, state);
 
   // partial order reduction for fresh pointers
   // can alias [0, next_ptr++] U extra_tgt_consts
@@ -2099,13 +2106,13 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
 }
 
 pair<StateValue, pair<AndExpr, expr>>
-Memory::load(const expr &p, const Type &type, uint64_t align) {
+Memory::load(const expr &p, const Type &type, uint64_t align, bool isFreezing) {
   assert(!memory_unused());
 
   Pointer ptr(*this, p);
   auto ubs = ptr.isDereferenceable(getStoreByteSize(type), align, false);
   set<expr> undef_vars;
-  auto ret = load(ptr, type, undef_vars, align);
+  auto ret = load(ptr, type, undef_vars, align, isFreezing);
   return { state->rewriteUndef(std::move(ret), undef_vars), std::move(ubs) };
 }
 

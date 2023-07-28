@@ -198,7 +198,7 @@ class Memory {
                          bool left2right = true,
                          DataType type = DATA_ANY);
   StateValue load(const Pointer &ptr, const Type &type,
-                  std::set<smt::expr> &undef, uint64_t align);
+                  std::set<smt::expr> &undef, uint64_t align, bool isFreezing);
 
   DataType data_type(const std::vector<std::pair<unsigned, smt::expr>> &data,
                      bool full_store) const;
@@ -323,7 +323,7 @@ public:
   void store(const smt::expr &ptr, const StateValue &val, const Type &type,
              uint64_t align, const std::set<smt::expr> &undef_vars);
   std::pair<StateValue, std::pair<smt::AndExpr, smt::expr>>
-    load(const smt::expr &ptr, const Type &type, uint64_t align);
+  load(const smt::expr &ptr, const Type &type, uint64_t align, bool isFreezing);
 
   // raw load; NB: no UB check
   Byte raw_load(const Pointer &p, std::set<smt::expr> &undef_vars);
