@@ -3872,7 +3872,7 @@ void Load::print(ostream &os) const {
 StateValue Load::toSMT(State &s) const {
   auto &p = s.getWellDefinedPtr(*ptr);
   check_can_load(s, p);
-  auto [sv, ub] = s.getMemory().load(p, getType(), align);
+  auto [sv, ub] = s.getMemory().load(p, getType(), align, isFreezing);
   s.addUB(std::move(ub));
   return sv;
 }
@@ -3883,7 +3883,7 @@ expr Load::getTypeConstraints(const Function &f) const {
 }
 
 unique_ptr<Instr> Load::dup(Function &f, const string &suffix) const {
-  return make_unique<Load>(getType(), getName() + suffix, *ptr, align);
+  return make_unique<Load>(getType(), getName() + suffix, *ptr, align, isFreezing);
 }
 
 
@@ -4344,7 +4344,8 @@ StateValue Strlen::toSMT(State &s) const {
   auto ith_exec =
       [&s, &p, &ty](unsigned i, bool _) -> tuple<expr, expr, AndExpr, expr> {
     AndExpr ub;
-    auto [val, ub_load] = s.getMemory().load((p + i)(), IntType("i8", 8), 1);
+    auto [val, ub_load] =
+        s.getMemory().load((p + i)(), IntType("i8", 8), 1, false);
     ub.add(std::move(ub_load.first));
     ub.add(std::move(ub_load.second));
     ub.add(std::move(val.non_poison));
