@@ -3801,6 +3801,8 @@ StateValue Load::toSMT(State &s) const {
   check_can_load(s, p);
   auto [sv, ub] = s.getMemory().load(p, getType(), align);
   s.addUB(std::move(ub));
+  if (isFreezing)
+    return freeze_elems(s, getType(), sv);
   return sv;
 }
 
@@ -3810,7 +3812,7 @@ expr Load::getTypeConstraints(const Function &f) const {
 }
 
 unique_ptr<Instr> Load::dup(Function &f, const string &suffix) const {
-  return make_unique<Load>(getType(), getName() + suffix, *ptr, align);
+  return make_unique<Load>(getType(), getName() + suffix, *ptr, align, isFreezing);
 }
 
 
