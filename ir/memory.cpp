@@ -473,6 +473,29 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
                                const Type &toType, bool isFreezing) {
   assert(!bytes.empty());
 
+  if (isFreezing) {
+    StateValue val;
+    bool first = true;
+
+    for (auto &b : bytes) {
+      expr byteValue = expr::mkIf(b.isPtr(), b.ptrValue(), b.nonptrValue());
+      expr nondet = expr::mkFreshVar("nondet", byteValue);
+      StateValue v(
+          expr::mkIf(b.isPtr(), expr::mkIf(b.isPoison(), nondet, b.ptrValue()),
+                     expr::mkIf(b.isPoison(),
+                                ((b.nonptrValue() & b.nonptrNonpoison()) |
+                                 (~b.nonptrNonpoison() & nondet)),
+                                b.nonptrValue())),
+          toType.isPtrType() ? expr(true) : expr::mkInt(-1, bits_byte));
+      val = first ? std::move(v) : v.concat(val);
+      first = false;
+    }
+    if (toType.isPtrType())
+      return val;
+    else
+      return toType.fromInt(val.trunc(toType.bits(), toType.np_bits()));
+  }
+
   if (toType.isPtrType()) {
     assert(bytes.size() == bits_program_pointer / bits_byte);
     expr loaded_ptr, is_ptr;
@@ -526,23 +549,9 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     IntType ibyteTy("", bits_byte);
 
     for (auto &b : bytes) {
-      if (isFreezing) {
-        expr byteValue = expr::mkIf(b.isPtr(), b.ptrValue(), b.nonptrValue());
-        expr nondet = expr::mkFreshVar("nondet", byteValue);
-        StateValue v(
-            expr::mkIf(b.isPtr(),
-                       expr::mkIf(b.isPoison(), nondet, b.ptrValue()),
-                       expr::mkIf(b.isPoison(),
-                                  ((b.nonptrValue() & b.nonptrNonpoison()) |
-                                   (~b.nonptrNonpoison() & nondet)),
-                                  b.nonptrValue())),
-            expr::mkInt(-1, bits_byte));
-        val = first ? std::move(v) : v.concat(val);
-      } else {
-        StateValue v(b.nonptrValue(),
-                     ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison()));
-        val = first ? std::move(v) : v.concat(val);
-      }
+      StateValue v(b.nonptrValue(),
+                   ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison()));
+      val = first ? std::move(v) : v.concat(val);
       first = false;
     }
     return toType.fromInt(val.trunc(bitsize, toType.np_bits()));
