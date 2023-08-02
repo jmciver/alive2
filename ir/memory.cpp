@@ -525,10 +525,24 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     bool first = true;
     IntType ibyteTy("", bits_byte);
 
-    for (auto &b: bytes) {
-      StateValue v(b.nonptrValue(),
-                   ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison()));
-      val = first ? std::move(v) : v.concat(val);
+    for (auto &b : bytes) {
+      if (isFreezing) {
+        expr byteValue = expr::mkIf(b.isPtr(), b.ptrValue(), b.nonptrValue());
+        expr nondet = expr::mkFreshVar("nondet", byteValue);
+        StateValue v(
+            expr::mkIf(b.isPtr(),
+                       expr::mkIf(b.isPoison(), nondet, b.ptrValue()),
+                       expr::mkIf(b.isPoison(),
+                                  ((b.nonptrValue() & b.nonptrNonpoison()) |
+                                   (~b.nonptrNonpoison() & nondet)),
+                                  b.nonptrValue())),
+            expr::mkInt(-1, bits_byte));
+        val = first ? std::move(v) : v.concat(val);
+      } else {
+        StateValue v(b.nonptrValue(),
+                     ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison()));
+        val = first ? std::move(v) : v.concat(val);
+      }
       first = false;
     }
     return toType.fromInt(val.trunc(bitsize, toType.np_bits()));
