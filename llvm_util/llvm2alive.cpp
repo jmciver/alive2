@@ -1253,6 +1253,7 @@ public:
         break;
 
       // non-relevant for correctness
+      case LLVMContext::MD_freeze_bits:
       case LLVMContext::MD_loop:
       case LLVMContext::MD_nosanitize:
       case LLVMContext::MD_prof:
