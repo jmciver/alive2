@@ -9,6 +9,7 @@
 #include "util/compiler.h"
 #include "util/config.h"
 #include <array>
+#include <iostream>
 #include <numeric>
 #include <string>
 
@@ -296,6 +297,27 @@ expr Byte::isZero() const {
   return expr::mkIf(isPtr(), ptr().isNull(), nonptrValue() == 0);
 }
 
+smt::expr Byte::poisonMask() const {
+  const unsigned repeatBits = bits_byte / bits_poison_per_byte;
+  if (isPtr().isTrue()) {
+    return ptrNonpoison().repeat(repeatBits);
+  } else {
+    expr a;
+    bool first = true;
+    auto np = nonptrNonpoison();
+    for (unsigned i = 0; i < bits_poison_per_byte; ++i) {
+      unsigned idx = bits_poison_per_byte - i - 1;
+      if (first) {
+        a = np.extract(idx, idx).repeat(repeatBits);
+        first = false;
+      } else {
+        a.concat(np.extract(idx, idx).repeat(repeatBits));
+      }
+    }
+    return a;
+  }
+}
+
 expr Byte::refined(const Byte &other) const {
   if (eq(other))
     return true;
@@ -470,31 +492,8 @@ static vector<Byte> valueToBytes(const StateValue &val, const Type &fromType,
 }
 
 static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
-                               const Type &toType, bool isFreezing) {
+                               const Type &toType, bool isFreezing, State *s) {
   assert(!bytes.empty());
-
-  if (isFreezing) {
-    StateValue val;
-    bool first = true;
-
-    for (auto &b : bytes) {
-      expr byteValue = expr::mkIf(b.isPtr(), b.ptrValue(), b.nonptrValue());
-      expr nondet = expr::mkFreshVar("nondet", byteValue);
-      StateValue v(
-          expr::mkIf(b.isPtr(), expr::mkIf(b.isPoison(), nondet, b.ptrValue()),
-                     expr::mkIf(b.isPoison(),
-                                ((b.nonptrValue() & b.nonptrNonpoison()) |
-                                 (~b.nonptrNonpoison() & nondet)),
-                                b.nonptrValue())),
-          toType.isPtrType() ? expr(true) : expr::mkInt(-1, bits_byte));
-      val = first ? std::move(v) : v.concat(val);
-      first = false;
-    }
-    if (toType.isPtrType())
-      return val;
-    else
-      return toType.fromInt(val.trunc(toType.bits(), toType.np_bits()));
-  }
 
   if (toType.isPtrType()) {
     assert(bytes.size() == bits_program_pointer / bits_byte);
@@ -537,8 +536,13 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     } else {
       value = expr::mkIf(is_ptr, loaded_ptr, Pointer::mkNullPointer(m)());
     }
-    return { std::move(value), std::move(non_poison) };
 
+    if (isFreezing) {
+      expr nondet = s->getFreshNondetVar("nondet", value);
+      return {expr::mkIf(non_poison, value, nondet), true};
+    } else {
+      return {std::move(value), std::move(non_poison)};
+    }
   } else {
     assert(!toType.isAggregateType() || isNonPtrVector(toType));
     auto bitsize = toType.bits();
@@ -549,8 +553,18 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     IntType ibyteTy("", bits_byte);
 
     for (auto &b : bytes) {
-      StateValue v(b.nonptrValue(),
-                   ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison()));
+      StateValue v;
+      expr preByteNonPoison =
+          ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison());
+      if (isFreezing) {
+        expr nondet = s->getFreshNondetVar("nondet", b.nonptrValue());
+        v = {expr::mkIf(preByteNonPoison == expr::mkInt(-1, preByteNonPoison),
+                        b.nonptrValue(), nondet),
+             expr::mkInt(-1, b.nonptrNonpoison())};
+      } else {
+        v = {b.nonptrValue(),
+             ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison())};
+      }
       val = first ? std::move(v) : v.concat(val);
       first = false;
     }
@@ -1821,7 +1835,7 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
   bool is_ptr = type.isPtrType();
   auto loadedBytes = load(ptr, bytecount, undef, align, little_endian,
                           is_ptr ? DATA_PTR : DATA_INT);
-  auto val = bytesToValue(*this, loadedBytes, type, isFreezing);
+  auto val = bytesToValue(*this, loadedBytes, type, isFreezing, state);
 
   // partial order reduction for fresh pointers
   // can alias [0, next_ptr++] U extra_tgt_consts
