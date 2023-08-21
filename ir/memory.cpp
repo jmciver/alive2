@@ -296,27 +296,6 @@ expr Byte::isZero() const {
   return expr::mkIf(isPtr(), ptr().isNull(), nonptrValue() == 0);
 }
 
-smt::expr Byte::poisonMask() const {
-  const unsigned repeatBits = bits_byte / bits_poison_per_byte;
-  if (isPtr().isTrue()) {
-    return ptrNonpoison().repeat(repeatBits);
-  } else {
-    expr a;
-    bool first = true;
-    auto np = nonptrNonpoison();
-    for (unsigned i = 0; i < bits_poison_per_byte; ++i) {
-      unsigned idx = bits_poison_per_byte - i - 1;
-      if (first) {
-        a = np.extract(idx, idx).repeat(repeatBits);
-        first = false;
-      } else {
-        a.concat(np.extract(idx, idx).repeat(repeatBits));
-      }
-    }
-    return a;
-  }
-}
-
 expr Byte::refined(const Byte &other) const {
   if (eq(other))
     return true;

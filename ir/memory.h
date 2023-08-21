@@ -67,9 +67,6 @@ public:
 
   smt::expr&& operator()() && { return std::move(p); }
 
-  // Return a bitvector suitable for masking the non-poison values of the byte.
-  smt::expr poisonMask() const;
-
   smt::expr refined(const Byte &other) const;
 
   smt::expr operator==(const Byte &rhs) const {
