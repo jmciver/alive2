@@ -598,7 +598,9 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
       if (isFreezing) {
         expr nondet = s->getFreshNondetVar("nondet", b.nonptrValue());
         v = {expr::mkIf(preByteNonPoison == expr::mkInt(-1, preByteNonPoison),
-                        b.nonptrValue(), nondet),
+                        b.nonptrValue(),
+                        (b.nonptrValue() & preByteNonPoison) |
+                            (nondet & ~preByteNonPoison)),
              expr::mkInt(-1, b.nonptrNonpoison())};
       } else {
         expr isptr = ub_pre(!b.isPtr());
