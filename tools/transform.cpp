@@ -1230,10 +1230,12 @@ static void calculateAndInitConstants(Transform &t) {
 
   bits_byte = 8 * (does_mem_access ?  (unsigned)min_access_size : 1);
 
-  bits_poison_per_byte = 1;
-  if (min_vect_elem_sz > 0)
-    bits_poison_per_byte = (min_vect_elem_sz % 8) ? bits_byte :
-                             bits_byte / gcd(bits_byte, min_vect_elem_sz);
+  // NOTE: The following is commented out to force a 1-to-1 correspondence
+  // between a poison mask bit and a data bit in a byte.
+  // bits_poison_per_byte = 1;
+  // if (min_vect_elem_sz > 0)
+  //   bits_poison_per_byte = (min_vect_elem_sz % 8) ? bits_byte :
+  //                            bits_byte / gcd(bits_byte, min_vect_elem_sz);
 
   strlen_unroll_cnt = 10;
   memcmp_unroll_cnt = 10;
