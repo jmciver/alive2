@@ -595,10 +595,6 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
       StateValue v;
       expr preByteNonPoison =
           ibyteTy.combine_poison(!b.isPtr(), b.nonptrNonpoison());
-      if (b.nonptrValue().bits() - preByteNonPoison.bits() != 0) {
-        preByteNonPoison = preByteNonPoison.zext(b.nonptrValue().bits() -
-                                                 preByteNonPoison.bits());
-      }
       if (isFreezing) {
         expr nondet = s->getFreshNondetVar("nondet", b.nonptrValue());
         v = {expr::mkIf(preByteNonPoison == expr::mkInt(-1, preByteNonPoison),
