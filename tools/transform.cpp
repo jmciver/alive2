@@ -1228,7 +1228,8 @@ static void calculateAndInitConstants(Transform &t) {
   if (config::tgt_is_asm)
     bits_ptr_address = bits_program_pointer;
 
-  bits_byte = 8 * (does_mem_access ?  (unsigned)min_access_size : 1);
+  // bits_byte = 8 * (does_mem_access ?  (unsigned)min_access_size : 1);
+  bits_byte = 8;
 
   // NOTE: The following is commented out to force a 1-to-1 correspondence
   // between a poison mask bit and a data bit in a byte.
