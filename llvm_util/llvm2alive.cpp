@@ -1321,6 +1321,10 @@ public:
         BB->addInstr(make_unique<Assume>(*i, Assume::WellDefined));
         break;
 
+      // The load attribute freeze_bits is handled in visitLoadInst.
+      case LLVMContext::MD_freeze_bits:
+        break;
+
       case LLVMContext::MD_dereferenceable:
       case LLVMContext::MD_dereferenceable_or_null: {
         auto kind = ID == LLVMContext::MD_dereferenceable
