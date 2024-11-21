@@ -636,7 +636,8 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     }
 
     if (isFreezing) {
-      expr nondet = s->getFreshNondetVar("nondet", loaded_ptr);
+      expr nondet =  expr::mkFreshVar("nondet", loaded_ptr);
+      s->addQuantVar(nondet);
       return {expr::mkIf(non_poison, loaded_ptr, nondet), true};
     } else {
       return {std::move(loaded_ptr), std::move(non_poison)};
