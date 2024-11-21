@@ -3956,6 +3956,9 @@ void Load::rauw(const Value &what, Value &with) {
 void Load::print(ostream &os) const {
   os << getName() << " = load " << getType() << ", " << *ptr
      << ", align " << align;
+  if (isFreezing) {
+    os << ", !freeze_bits !{}";
+  }
 }
 
 StateValue Load::toSMT(State &s) const {
