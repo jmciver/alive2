@@ -514,8 +514,7 @@ public:
     default:
       UNREACHABLE();
     }
-    return make_unique<ICmp>(*ty, value_name(i), cond, *a, *b,
-                             i.hasSameSign() ? ICmp::SameSign : ICmp::None);
+    return make_unique<ICmp>(*ty, value_name(i), cond, *a, *b);
   }
 
   RetTy visitFCmpInst(llvm::FCmpInst &i) {
