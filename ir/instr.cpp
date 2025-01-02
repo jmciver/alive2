@@ -2647,11 +2647,8 @@ InlineAsm::InlineAsm(Type &type, string &&name, const string &asm_str,
            std::move(attrs)) {}
 
 
-ICmp::ICmp(Type &type, string &&name, Cond cond, Value &a, Value &b,
-           unsigned flags)
-    : Instr(type, std::move(name)), a(&a), b(&b), cond(cond), flags(flags),
-      defined(cond != Any) {
-  assert((flags & SameSign) == flags);
+ICmp::ICmp(Type &type, string &&name, Cond cond, Value &a, Value &b)
+  : Instr(type, std::move(name)), a(&a), b(&b), cond(cond), defined(cond != Any) {
   if (!defined)
     cond_name = getName() + "_cond";
 }
@@ -2699,10 +2696,7 @@ void ICmp::print(ostream &os) const {
   case UGT: condtxt = "ugt "; break;
   case Any: condtxt = ""; break;
   }
-  os << getName() << " = icmp ";
-  if (flags & SameSign)
-    os << "samesign ";
-  os << condtxt << *a << ", " << b->getName();
+  os << getName() << " = icmp " << condtxt << *a << ", " << b->getName();
   switch (pcmode) {
   case INTEGRAL: break;
   case PROVENANCE: os << ", use_provenance"; break;
@@ -2729,7 +2723,7 @@ StateValue ICmp::toSMT(State &s) const {
   auto &b_eval = s[*b];
 
   function<expr(const expr&, const expr&, Cond)> fn =
-      [](auto &av, auto &bv, Cond cond) {
+      [&](auto &av, auto &bv, Cond cond) {
     switch (cond) {
     case EQ:  return av == bv;
     case NE:  return av != bv;
@@ -2771,8 +2765,7 @@ StateValue ICmp::toSMT(State &s) const {
   auto scalar = [&](const StateValue &a, const StateValue &b) -> StateValue {
     auto fn2 = [&](Cond c) { return fn(a.value, b.value, c); };
     auto v = cond != Any ? fn2(cond) : build_icmp_chain(cond_var(), fn2);
-    auto np = flags & SameSign ? a.value.sign() == b.value.sign() : true;
-    return { v.toBVBool(), a.non_poison && b.non_poison && np };
+    return { v.toBVBool(), a.non_poison && b.non_poison };
   };
 
   auto &elem_ty = a->getType();
@@ -2796,7 +2789,7 @@ expr ICmp::getTypeConstraints(const Function &f) const {
 }
 
 unique_ptr<Instr> ICmp::dup(Function &f, const string &suffix) const {
-  return make_unique<ICmp>(getType(), getName() + suffix, cond, *a, *b, flags);
+  return make_unique<ICmp>(getType(), getName() + suffix, cond, *a, *b);
 }
 
 
