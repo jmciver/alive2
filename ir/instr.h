@@ -427,20 +427,17 @@ public:
     PROVENANCE, // compare pointer provenance & offsets
     OFFSETONLY // cmp ofs only. meaningful only when ptrs are based on same obj
   };
-  enum Flags { None = 0, SameSign = 1 << 0 };
 
 private:
   Value *a, *b;
   std::string cond_name;
   Cond cond;
-  unsigned flags;
   bool defined;
   PtrCmpMode pcmode = INTEGRAL;
   smt::expr cond_var() const;
 
 public:
-  ICmp(Type &type, std::string &&name, Cond cond, Value &a, Value &b,
-       unsigned flags = None);
+  ICmp(Type &type, std::string &&name, Cond cond, Value &a, Value &b);
 
   bool isPtrCmp() const;
   PtrCmpMode getPtrCmpMode() const { return pcmode; }
