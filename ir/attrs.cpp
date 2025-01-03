@@ -337,8 +337,7 @@ bool ParamAttrs::poisonImpliesUB() const {
          has(Dereferenceable) ||
          has(DereferenceableOrNull) ||
          has(NoUndef) ||
-         has(Writable) ||
-         !initializes.empty();
+         has(Writable);
 }
 
 uint64_t ParamAttrs::getDerefBytes() const {
