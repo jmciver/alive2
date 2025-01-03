@@ -15,7 +15,7 @@ namespace IR {
 class Memory;
 
 class Pointer {
-  Memory &m;
+  const Memory &m;
 
   // [0, padding, bid, offset, attributes (1 bit for each)] -- logical pointer
   // [1, padding, address, attributes] -- physical pointer

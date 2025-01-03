@@ -1321,64 +1321,6 @@ void Memory::storeLambda(const Pointer &ptr, const expr &offset,
   access(ptr, bytes.zextOrTrunc(bits_size_t), align, true, fn);
 }
 
-
-expr Memory::hasStored(const Pointer &p, const expr &bytes) const {
-  unsigned bytes_per_byte = bits_byte / 8;
-  expr bid = p.getShortBid();
-  expr offset = p.getShortOffset();
-  uint64_t bytes_i;
-  if (bytes.isUInt(bytes_i) && (bytes_i / bytes_per_byte) <= 8) {
-    expr ret = true;
-    for (uint64_t off = 0; off < (bytes_i / bytes_per_byte); ++off) {
-      expr off_expr = expr::mkUInt(off, offset);
-      ret &= has_stored_arg.load(bid.concat(offset + off_expr));
-    }
-    return ret;
-  } else {
-    expr var = expr::mkFreshVar("#off", offset);
-    state->addQuantVar(var);
-    expr bytes_div = bytes.zextOrTrunc(offset.bits())
-                          .udiv(expr::mkUInt(bytes_per_byte, bytes));
-    return (var.uge(offset) && var.ult(offset + bytes_div))
-             .implies(has_stored_arg.load(bid.concat(var)));
-  }
-}
-
-void Memory::record_store(const Pointer &p, const smt::expr &bytes) {
-  auto is_local = p.isLocal();
-  if (is_local.isTrue())
-    return;
-
-  unsigned bytes_per_byte = bits_byte / 8;
-  expr bid = p.getShortBid();
-  expr offset = p.getShortOffset();
-  uint64_t bytes_i;
-  if (bytes.isUInt(bytes_i) && (bytes_i / bytes_per_byte) <= 8) {
-    for (uint64_t off = 0; off < (bytes_i / bytes_per_byte); ++off) {
-      expr off_expr = expr::mkUInt(off, offset);
-      has_stored_arg
-        = expr::mkIf(is_local,
-                     has_stored_arg,
-                     has_stored_arg.store(bid.concat(offset + off_expr), true));
-    }
-  } else {
-    expr var     = expr::mkQVar(0, bid.concat(offset));
-    expr var_bid = var.extract(var.bits()-1, offset.bits());
-    expr var_off = var.trunc(offset.bits());
-
-    expr bytes_div = bytes.zextOrTrunc(offset.bits())
-                          .udiv(expr::mkUInt(bytes_per_byte, bytes));
-    has_stored_arg
-      = expr::mkIf(is_local,
-                   has_stored_arg,
-                   expr::mkLambda(var, "#bid_off",
-                     (bid == var_bid &&
-                      var_off.uge(offset) &&
-                      var_off.ult(offset + bytes_div)) ||
-                     has_stored_arg.load(var)));
-  }
-}
-
 static bool memory_unused() {
   return num_locals_src == 0 && num_locals_tgt == 0 && num_nonlocals == 0;
 }
@@ -1531,10 +1473,6 @@ Memory::Memory(State &state)
     // all local blocks are dead in the beginning
     local_block_liveness = expr::mkUInt(0, numLocals());
   }
-
-  // no argument has been written to at entry
-  unsigned bits = Pointer::bitsShortBid() + Pointer::bitsShortOffset();
-  has_stored_arg = expr::mkConstArray(expr::mkUInt(0, bits), false);
 
   // Initialize a memory block for null pointer.
   if (skip_null()) {
@@ -2806,8 +2744,6 @@ Memory Memory::mkIf(const expr &cond, Memory &&then, Memory &&els) {
                                             els.non_local_block_liveness);
   ret.local_block_liveness     = expr::mkIf(cond, then.local_block_liveness,
                                             els.local_block_liveness);
-  ret.has_stored_arg           = expr::mkIf(cond, then.has_stored_arg,
-                                            els.has_stored_arg);
   ret.local_blk_addr.add(els.local_blk_addr);
   ret.local_blk_size.add(els.local_blk_size);
   ret.local_blk_align.add(els.local_blk_align);
@@ -2957,7 +2893,6 @@ ostream& operator<<(ostream &os, const Memory &m) {
   if (!m.local_blk_addr.empty()) {
     os << "\nLOCAL BLOCK ADDR: " << m.local_blk_addr << '\n';
   }
-  os << "\nSTORED ADDRS: " << m.has_stored_arg << '\n';
   if (!m.ptr_alias.empty()) {
     os << "\nALIAS SETS:\n";
     for (auto &[bid, alias] : m.ptr_alias) {

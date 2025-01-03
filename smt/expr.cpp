@@ -751,7 +751,7 @@ expr expr::sdiv(const expr &rhs) const {
   if (rhs.isZero())
     return rhs;
 
-  if (isZero() || rhs.isOne())
+  if (isZero())
     return *this;
 
   if (isSMin() && rhs.isAllOnes())
@@ -767,7 +767,7 @@ expr expr::udiv(const expr &rhs) const {
   if (rhs.isZero())
     return rhs;
 
-  if (isZero() || rhs.isOne())
+  if (isZero())
     return *this;
 
   return binop_fold(rhs, Z3_mk_bvudiv);
