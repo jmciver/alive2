@@ -540,7 +540,7 @@ Pointer::isDereferenceable(const expr &bytes0, uint64_t align,
 
     // If we are loading from an argument and it has the 'initializes'
     // attribute, make sure we have already stored to it before.
-    if (!ignore_accessability && !iswrite && has_initializes_attr) {
+    if (!ignore_accessability && !iswrite) {
       auto &s = m.getState();
       for (auto &input0 : s.getFn().getInputs()) {
         auto &input = static_cast<const Input&>(input0);
@@ -711,7 +711,7 @@ Pointer::isDereferenceable(const expr &bytes0, uint64_t align,
   auto ptrs = std::move(all_ptrs)();
   p = ptrs ? *std::move(ptrs) : expr::mkUInt(0, totalBits());
 
-  if (!ignore_accessability && iswrite && has_initializes_attr)
+  if (!ignore_accessability && iswrite)
     m.record_store(*this, bytes);
 
   return { std::move(exprs), *std::move(is_aligned)() };

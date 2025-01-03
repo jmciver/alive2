@@ -1323,8 +1323,6 @@ void Memory::storeLambda(const Pointer &ptr, const expr &offset,
 
 
 expr Memory::hasStored(const Pointer &p, const expr &bytes) const {
-  assert(has_initializes_attr);
-
   unsigned bytes_per_byte = bits_byte / 8;
   expr bid = p.getShortBid();
   expr offset = p.getShortOffset();
@@ -1347,8 +1345,6 @@ expr Memory::hasStored(const Pointer &p, const expr &bytes) const {
 }
 
 void Memory::record_store(const Pointer &p, const smt::expr &bytes) {
-  assert(has_initializes_attr);
-
   auto is_local = p.isLocal();
   if (is_local.isTrue())
     return;
@@ -1537,10 +1533,8 @@ Memory::Memory(State &state)
   }
 
   // no argument has been written to at entry
-  if (has_initializes_attr) {
-    unsigned bits = Pointer::bitsShortBid() + Pointer::bitsShortOffset();
-    has_stored_arg = expr::mkConstArray(expr::mkUInt(0, bits), false);
-  }
+  unsigned bits = Pointer::bitsShortBid() + Pointer::bitsShortOffset();
+  has_stored_arg = expr::mkConstArray(expr::mkUInt(0, bits), false);
 
   // Initialize a memory block for null pointer.
   if (skip_null()) {
