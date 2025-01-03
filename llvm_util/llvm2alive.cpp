@@ -317,7 +317,7 @@ public:
     }
     return make_unique<FpConversionOp>(*ty, value_name(i), *val, op,
                                        FpRoundingMode{}, FpExceptionMode{},
-                                       flags, parse_fmath(i));
+                                       flags);
   }
 
   RetTy visitFreezeInst(llvm::FreezeInst &i) {
