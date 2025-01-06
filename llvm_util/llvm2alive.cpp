@@ -652,8 +652,9 @@ public:
     if (!i.isSimple())
       return error(i);
     PARSE_UNOP();
-    return
-      make_unique<Load>(*ty, value_name(i), *val, alignment(i, i.getType()));
+    return make_unique<Load>(*ty, value_name(i), *val,
+                             alignment(i, i.getType()),
+                             i.hasMetadata(LLVMContext::MD_freeze_bits));
   }
 
   RetTy visitStoreInst(llvm::StoreInst &i) {
@@ -1382,6 +1383,10 @@ public:
       case LLVMContext::MD_noundef:
       case LLVMContext::MD_dereferenceable:
       case LLVMContext::MD_dereferenceable_or_null:
+        break;
+
+      // The load attribute freeze_bits is handled in visitLoadInst.
+      case LLVMContext::MD_freeze_bits:
         break;
 
       case LLVMContext::MD_callees: {
