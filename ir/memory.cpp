@@ -620,7 +620,7 @@ static vector<Byte> valueToBytes(const StateValue &val, const Type &fromType,
 }
 
 static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
-                               const Type &toType) {
+                               const Type &toType, bool isFreezing, State *s) {
   assert(!bytes.empty());
 
   auto ub_pre = [&](expr &&e) -> expr {
@@ -2335,7 +2335,7 @@ void Memory::store(const expr &p, const StateValue &v, const Type &type,
 }
 
 StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
-                        uint64_t align) {
+                        uint64_t align, bool isFreezing) {
   unsigned bytecount = getStoreByteSize(type);
 
   auto aty = type.getAsAggregateType();
@@ -2351,7 +2351,8 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
 
       auto ptr_i = ptr + byteofs;
       auto align_i = gcd(align, byteofs % align);
-      member_vals.emplace_back(load(ptr_i, aty->getChild(i), undef, align_i));
+      member_vals.emplace_back(
+          load(ptr_i, aty->getChild(i), undef, align_i, isFreezing));
       byteofs += getStoreByteSize(aty->getChild(i));
     }
     assert(byteofs == bytecount);
@@ -2361,7 +2362,7 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
   bool is_ptr = type.isPtrType();
   auto loadedBytes = load(ptr, bytecount, undef, align, little_endian,
                           is_ptr ? DATA_PTR : DATA_INT);
-  auto val = bytesToValue(*this, loadedBytes, type);
+  auto val = bytesToValue(*this, loadedBytes, type, isFreezing, state);
 
   // partial order reduction for fresh pointers
   // can alias [0, next_ptr++] U extra_tgt_consts
@@ -2393,13 +2394,13 @@ StateValue Memory::load(const Pointer &ptr, const Type &type, set<expr> &undef,
 }
 
 pair<StateValue, pair<AndExpr, expr>>
-Memory::load(const expr &p, const Type &type, uint64_t align) {
+Memory::load(const expr &p, const Type &type, uint64_t align, bool isFreezing) {
   assert(!memory_unused());
 
   Pointer ptr(*this, p);
   auto ubs = ptr.isDereferenceable(getStoreByteSize(type), align, false);
   set<expr> undef_vars;
-  auto ret = load(ptr, type, undef_vars, align);
+  auto ret = load(ptr, type, undef_vars, align, isFreezing);
   return { state->rewriteUndef(std::move(ret), undef_vars), std::move(ubs) };
 }
 
