@@ -937,7 +937,7 @@ class Load final : public MemInstr {
   uint64_t align;
   bool isFreezing;
 public:
-  Load(Type &type, std::string &&name, Value &ptr, uint64_t align, bool isFreezing = true)
+  Load(Type &type, std::string &&name, Value &ptr, uint64_t align, bool isFreezing = false)
     : MemInstr(type, std::move(name)), ptr(&ptr), align(align), isFreezing(isFreezing) {}
 
   Value& getPtr() const { return *ptr; }
