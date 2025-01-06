@@ -677,8 +677,15 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
     } else {
       loaded_ptr = expr::mkIf(is_ptr, loaded_ptr, Pointer::mkNullPointer(m)());
     }
-    return { std::move(loaded_ptr), std::move(non_poison) };
 
+    if (isFreezing) {
+      StateValue ret_type = toType.getDummyValue(true);
+      expr nondet = s->getFreshNondetVar("nondet", ret_type.value);
+      return {expr::mkIf(non_poison, loaded_ptr, std::move(nondet)),
+              std::move(ret_type.non_poison)};
+    } else {
+      return {std::move(loaded_ptr), std::move(non_poison)};
+    }
   } else {
     assert(!toType.isAggregateType() || isNonPtrVector(toType));
     auto bitsize = toType.bits();
