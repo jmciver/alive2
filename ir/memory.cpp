@@ -705,8 +705,34 @@ static StateValue bytesToValue(const Memory &m, const vector<Byte> &bytes,
       if (is_asm)
         expr_np = true;
 
-      StateValue v(is_asm ? b.forceCastToInt() : b.nonptrValue(),
-                   ibyteTy.combine_poison(expr_np, b.nonptrNonpoison()));
+      StateValue v;
+      expr nonPoisonBits = ibyteTy.combine_poison(expr_np, b.nonptrNonpoison());
+      if (isFreezing) {
+        if (nonPoisonBits.isAllOnes()) {
+          v = {b.nonptrValue(), std::move(nonPoisonBits)};
+        } else {
+          const unsigned nonPoisonChunkSize = bits_byte / bits_poison_per_byte;
+          bool beginMask = true;
+          expr mask;
+          for (unsigned nonPoisonBitPosition = 0;
+               nonPoisonBitPosition < bits_poison_per_byte;
+               ++nonPoisonBitPosition) {
+            expr chunkMask =
+                expr::mkIf(nonPoisonBits.extract(nonPoisonBitPosition,
+                                                 nonPoisonBitPosition) == 1,
+                           expr::mkInt(-1, nonPoisonChunkSize),
+                           expr::mkUInt(0, nonPoisonChunkSize));
+            mask = beginMask ? std::move(chunkMask) : chunkMask.concat(mask);
+            beginMask = false;
+          }
+          expr nondet = s->getFreshNondetVar("nondet", b.nonptrValue());
+          v = {(b.nonptrValue() & mask) | (nondet & ~mask),
+               expr::mkInt(-1, b.nonptrNonpoison())};
+        }
+      } else {
+        v = {is_asm ? b.forceCastToInt() : b.nonptrValue(),
+             std::move(nonPoisonBits)};
+      }
       val = first ? std::move(v) : v.concat(val);
       first = false;
     }
