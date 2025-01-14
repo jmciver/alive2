@@ -1634,18 +1634,18 @@ public:
         attrs.set(ParamAttrs::DeadOnUnwind);
         break;
 
-      case llvm::Attribute::Initializes:
-        for (auto &CR : llvmattr.getInitializes()) {
-          auto l = CR.getLower().tryZExtValue();
-          auto h = CR.getUpper().tryZExtValue();
-          if (!l || !h) {
-            errorAttr(llvmattr);
-            return false;
-          }
-          attrs.initializes.emplace_back(*l, *h);
-        }
-        ranges::sort(attrs.initializes);
-        break;
+      // case llvm::Attribute::Initializes:
+      //   for (auto &CR : llvmattr.getInitializes()) {
+      //     auto l = CR.getLower().tryZExtValue();
+      //     auto h = CR.getUpper().tryZExtValue();
+      //     if (!l || !h) {
+      //       errorAttr(llvmattr);
+      //       return false;
+      //     }
+      //     attrs.initializes.emplace_back(*l, *h);
+      //   }
+      //   ranges::sort(attrs.initializes);
+      //   break;
 
       default:
         // If it is call site, it should be added at approximation list
