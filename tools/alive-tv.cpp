@@ -142,6 +142,7 @@ and "tgt5" will unused.
   verifier.always_verify = opt_always_verify;
   verifier.print_dot = opt_print_dot;
   verifier.bidirectional = opt_bidirectional;
+  verifier.disable_instance = opt_disable_instance_generation;
 
   unique_ptr<llvm::Module> M2;
   if (opt_file2.empty()) {
