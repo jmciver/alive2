@@ -54,10 +54,13 @@ class TransformVerify {
   Transform &t;
   std::unordered_map<std::string, const IR::Instr*> tgt_instrs;
   bool check_each_var;
+  bool disable_instance;
 
 public:
-  TransformVerify(Transform &t, bool check_each_var);
-  std::pair<std::unique_ptr<IR::State>,std::unique_ptr<IR::State>> exec() const;
+  TransformVerify(Transform &t, bool check_each_var,
+                  bool disable_instance = false);
+  std::pair<std::unique_ptr<IR::State>, std::unique_ptr<IR::State>>
+  exec() const;
   util::Errors verify() const;
   TypingAssignments getTypings() const;
   void fixupTypes(const TypingAssignments &ty);
