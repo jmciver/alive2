@@ -115,8 +115,7 @@ using print_var_val_ty = function<void(ostream&, const Model&)>;
 static bool error(Errors &errs, State &src_state, State &tgt_state,
                   const Result &r, Solver &solver, const Value *var,
                   const char *msg, bool check_each_var,
-                  print_var_val_ty print_var_val,
-                  bool disable_instance) {
+                  print_var_val_ty print_var_val) {
 
   if (r.isInvalid()) {
     errs.add("Invalid expr", false);
@@ -166,12 +165,6 @@ static bool error(Errors &errs, State &src_state, State &tgt_state,
       errs.add(std::move(s).str(), false);
       return false;
     }
-  }
-
-  // Exit early if instance reporting is not required.
-  if (disable_instance) {
-    errs.add(msg, true);
-    return false;
   }
 
   // minimize the model
@@ -505,7 +498,7 @@ static void
 check_refinement(Errors &errs, const Transform &t, State &src_state,
                  State &tgt_state, const Value *var, const Type &type,
                  const State::ValTy &ap, const State::ValTy &bp,
-                 bool check_each_var, bool disable_instance) {
+                 bool check_each_var) {
   auto fndom_a   = ap.domain();
   auto fndom_b   = bp.domain();
   auto &retdom_a = ap.return_domain;
@@ -627,7 +620,7 @@ check_refinement(Errors &errs, const Transform &t, State &src_state,
 
     if (!res.isUnsat() &&
         !error(errs, src_state, tgt_state, res, s, var, msg, check_each_var,
-               printer, disable_instance))
+               printer))
       return false;
     return true;
   };
@@ -1355,9 +1348,8 @@ static void calculateAndInitConstants(Transform &t) {
 
 namespace tools {
 
-TransformVerify::TransformVerify(Transform &t, bool check_each_var,
-                                 bool disable_instance)
-    : t(t), check_each_var(check_each_var), disable_instance(disable_instance) {
+TransformVerify::TransformVerify(Transform &t, bool check_each_var)
+  : t(t), check_each_var(check_each_var) {
   if (check_each_var) {
     for (auto &i : t.tgt.instrs()) {
       tgt_instrs.emplace(i.getName(), &i);
@@ -1470,7 +1462,7 @@ Errors TransformVerify::verify() const {
 
         auto *val_tgt = tgt_state->at(*tgt_instrs.at(name));
         check_refinement(errs, t, *src_state, *tgt_state, &var, var.getType(),
-                         *val, *val_tgt, check_each_var, disable_instance);
+                         *val, *val_tgt, check_each_var);
         if (errs)
           return errs;
       }
@@ -1478,7 +1470,7 @@ Errors TransformVerify::verify() const {
 
     check_refinement(errs, t, *src_state, *tgt_state, nullptr, t.src.getType(),
                      src_state->returnVal(), tgt_state->returnVal(),
-                     check_each_var, disable_instance);
+                     check_each_var);
   } catch (AliveException e) {
     return std::move(e);
   }

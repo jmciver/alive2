@@ -41,8 +41,7 @@ struct Results {
 Results verify(llvm::Function &F1, llvm::Function &F2,
                llvm::TargetLibraryInfoWrapperPass &TLI,
                smt::smt_initializer &smt_init, ostream &out,
-               bool print_transform, bool always_verify,
-               bool disable_instance) {
+               bool print_transform, bool always_verify) {
   auto fn1 = llvm2alive(F1, TLI.getTLI(F1), true);
   if (!fn1)
     return Results::Error("Could not translate '" + F1.getName().str() +
@@ -71,7 +70,7 @@ Results verify(llvm::Function &F1, llvm::Function &F2,
 
   smt_init.reset();
   r.t.preprocess();
-  TransformVerify verifier(r.t, false, disable_instance);
+  TransformVerify verifier(r.t, false);
 
   if (print_transform)
     r.t.print(out, {});
@@ -97,8 +96,7 @@ Results verify(llvm::Function &F1, llvm::Function &F2,
 } // namespace
 
 bool Verifier::compareFunctions(llvm::Function &F1, llvm::Function &F2) {
-  auto r = verify(F1, F2, TLI, smt_init, out, !quiet, always_verify,
-                  disable_instance);
+  auto r = verify(F1, F2, TLI, smt_init, out, !quiet, always_verify);
   if (r.status == Results::ERROR) {
     out << "ERROR: " << r.error;
     ++num_errors;
@@ -148,8 +146,7 @@ bool Verifier::compareFunctions(llvm::Function &F1, llvm::Function &F2) {
   }
 
   if (bidirectional) {
-    r = verify(F2, F1, TLI, smt_init, out, false, always_verify,
-               disable_instance);
+    r = verify(F2, F1, TLI, smt_init, out, false, always_verify);
     switch (r.status) {
     case Results::ERROR:
     case Results::TYPE_CHECKER_FAILED:

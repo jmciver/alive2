@@ -104,10 +104,6 @@ if (compiling()) {
         push @ARGV, ("-mllvm", "-tv-save-ir");
     }
 
-    if (gentenv("ALIVECC_DISABLE_INSTANCE_GENERATION")) {
-      push @ARGV, ("-mllvm", "-tv-disable-instance-generation");
-    }
-
     # sanity check: make sure we intercepted all environment variables
     # of the form ALIVECC_*
     foreach my $e (keys %ENV) {

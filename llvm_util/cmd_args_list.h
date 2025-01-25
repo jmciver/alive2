@@ -149,12 +149,6 @@ llvm::cl::opt<bool> opt_overwrite_reports(LLVM_ARGS_PREFIX "overwrite-reports",
   llvm::cl::desc("Overwrite existing report files"),
   llvm::cl::init(false), llvm::cl::cat(alive_cmdargs));
 
-llvm::cl::opt<bool> opt_disable_instance_generation(
-    LLVM_ARGS_PREFIX "disable-instance-generation",
-    llvm::cl::desc(
-        "Disable instance generation when a verification error is found"),
-    llvm::cl::init(false), llvm::cl::cat(alive_cmdargs));
-
 llvm::cl::opt<bool> opt_cache(LLVM_ARGS_PREFIX "cache",
   llvm::cl::init(false),
   llvm::cl::desc("Use external cache (default=false)"));
