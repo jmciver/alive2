@@ -1303,7 +1303,7 @@ public:
 
   template <typename RetType = RetTy>
   RetType error(llvm::Instruction &i) {
-    if (hit_limits)
+    if (1||hit_limits)
       return {};
     stringstream ss;
     ss << i;
@@ -1314,7 +1314,7 @@ public:
   }
 
   RetTy errorAttr(const llvm::Attribute &attr) {
-    *out << "ERROR: Unsupported attribute: " << attr.getAsString() << '\n';
+    //*out << "ERROR: Unsupported attribute: " << attr.getAsString() << '\n';
     return {};
   }
 
