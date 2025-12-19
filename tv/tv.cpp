@@ -258,7 +258,6 @@ struct TVLegacyPass final : public llvm::ModulePass {
           t.print(*out, print_opts);
           *out << "Transformation seems to be correct! (syntactically equal)\n\n";
         }
-        *out << t.src.getName() << ": syntactically correct\n";
         return;
       }
     }
@@ -338,7 +337,7 @@ struct TVLegacyPass final : public llvm::ModulePass {
         errs.printWarnings(*out);
 
       if (errs) {
-        if (config::quiet && errs.isUnsound())
+        if (config::quiet)
           t.print(*out);
 
         *out << "Transformation doesn't verify!" <<
@@ -354,8 +353,8 @@ struct TVLegacyPass final : public llvm::ModulePass {
         }
         if (opt_error_fatal && has_failure)
           finalize();
-      } else if (1||!config::quiet) {
-        *out << t.src.getName() << ": correct\n";
+      } else if (!config::quiet) {
+        *out << "Transformation seems to be correct!\n\n";
       }
     }
 
@@ -633,19 +632,19 @@ struct TVPass : public llvm::PassInfoMixin<TVPass> {
 
       static unsigned count = 0;
 
-      if (1||!config::quiet) {
-        // *out << "-- " << ++count << ". " << pass_name;
+      if (!config::quiet) {
+        *out << "-- " << ++count << ". " << pass_name;
 
         if (unsupported)
-          (void)0;//*out << " : Skipping unsupported\n";
+          *out << " : Skipping unsupported\n";
         else if (terminate)
-          (void)0;//*out << " : Global pass. Cannot continue verification\n";
+          *out << " : Global pass. Cannot continue verification\n";
         else if (nop)
-          (void)0;//*out << " : Skipping NOP\n";
+          *out << " : Skipping NOP\n";
         else if (check_skip)
-          (void)0;//*out << " : Skip this pass per user request\n";
+          *out << " : Skip this pass per user request\n";
         else
-          *out << "-- " << ++count << ". " << pass_name << '\n';
+          *out << '\n';
       }
 
       if ((dont_verify |= terminate))

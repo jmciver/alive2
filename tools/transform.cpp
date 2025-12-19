@@ -169,7 +169,7 @@ static bool error(Errors &errs, State &src_state, State &tgt_state,
     }
   }
 
-  if (0 && config::quiet) {
+  if (config::quiet) {
     s << msg << " in " << src_state.getFn().getName() << '\n';
     errs.add(std::move(s).str(), true);
     return false;
@@ -177,7 +177,7 @@ static bool error(Errors &errs, State &src_state, State &tgt_state,
 
   // minimize the model
   optional<Result> newr;
-#if 0
+
   auto try_reduce = [&](const expr &e) {
     if (e.isTrue())
       return true;
@@ -260,9 +260,6 @@ static bool error(Errors &errs, State &src_state, State &tgt_state,
   }
 
   // now reduce memory-related stuff, like addresses and block sizes
-#endif
-
-bool unique_model = false;
 
   auto &m = (newr ? &*newr : &r)->getModel();
 
